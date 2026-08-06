@@ -1,0 +1,276 @@
+ <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TechStore | Shop</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+ <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- Navbar -->
+<header class="navbar">
+        <a href="index.html" class="logo"><i class="fa-solid fa-store"></i> Nova<span>-Store</span></a>
+        <ul class="nav-links">
+            <li><a href="account.html">Account</a></li>
+            <li><a href="index.html">Home</a></li>
+            <li><a href="shop.html"  class="active">Shop</a></li>
+            <li><a href="checkout.html">Checkout</a></li>
+            <li><a href="contact.html">Contact</a></li>
+            <li><a href="about.html">About</a></li>
+
+               <li><a href="checkout.html" class="cart-btn"><i class="fa-solid fa-cart-shopping"></i> Cart (<span id="cart-count">0</span>)</a></li>
+        </ul>
+    </header>
+    <!-- Shop Content -->
+    <div class="shop-container">
+        <div class="shop-header">
+            <h1>Explore Our Products</h1>
+            <p>Browse our extensive collection of high-end tech items curated just for you.</p>
+            
+            <!-- Search Bar -->
+            <div class="search-box">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <input type="text" id="searchInput" placeholder="Search products by name or feature..." onkeyup="filterProducts()">
+            </div>
+        </div>
+
+        <!-- Category 1: Laptops -->
+        <div class="category-section">
+            <h2 class="category-title">High-Performance Laptops</h2>
+            <div class="products-grid">
+                <div class="product-card">
+                    <div class="product-img-box"><img src="https://images.unsplash.com/photo-1517336714731-489689fd1ca8" alt="Laptop"></div>
+                    <div class="product-info">
+                        <h3>Pro UltraBook X1</h3>
+                        <p>Powerful 16GB RAM, 512GB SSD, stunning 4K display for creators.</p>
+                        <div class="product-footer">
+                            <span class="price">$1299</span>
+                            <button class="btn-add" onclick="addToCart('Pro UltraBook X1', 1299)">Add to Cart</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="product-card">
+                    <div class="product-img-box"><img src="https://images.unsplash.com/photo-1496181133206-80ce9b88a853" alt="Laptop"></div>
+                    <div class="product-info">
+                        <h3>Gaming Beast G15</h3>
+                        <p>Dedicated graphics card, high refresh rate, built for extreme gaming.</p>
+                        <div class="product-footer">
+                            <span class="price">$1599</span>
+                            <button class="btn-add" onclick="addToCart('Gaming Beast G15', 1599)">Add to Cart</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="product-card">
+                    <div class="product-img-box"><img src="https://images.unsplash.com/photo-1541807084-5c52b6b3adef" alt="Laptop"></div>
+                    <div class="product-info">
+                        <h3>SlimBook Air</h3>
+                        <p>Ultra-thin, lightweight design with all-day battery life for professionals.</p>
+                        <div class="product-footer">
+                            <span class="price">$999</span>
+                            <button class="btn-add" onclick="addToCart('SlimBook Air', 999)">Add to Cart</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Category 2: Smartphones -->
+        <div class="category-section">
+            <h2 class="category-title">Smartphones & Devices</h2>
+            <div class="products-grid">
+                <div class="product-card">
+                    <div class="product-img-box"><img src="https://images.unsplash.com/photo-1511707171634-5f897ff02aa9" alt="Phone"></div>
+                    <div class="product-info">
+                        <h3>NovaPhone 14 Pro</h3>
+                        <p>Triple camera setup, 120Hz OLED screen, massive storage capacity.</p>
+                        <div class="product-footer">
+ <span class="price">$899</span>
+                            <button class="btn-add" onclick="addToCart('NovaPhone 14 Pro', 899)">Add to Cart</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="product-card">
+                    <div class="product-img-box"><img src="https://images.unsplash.com/photo-1565849904461-04a58ad377e0" alt="Phone"></div>
+                    <div class="product-info">
+                        <h3>Apex X Phone</h3>
+                        <p>Sleek futuristic design with lightning-fast processor and 5G support.</p>
+                        <div class="product-footer">
+                            <span class="price">$749</span>
+                            <button class="btn-add" onclick="addToCart('Apex X Phone', 749)">Add to Cart</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="product-card">
+                    <div class="product-img-box"><img src="data:image/webp;base64,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" alt="Phone"></div>
+                    <div class="product-info">
+                        <h3>Pulse Lite 5G</h3>
+                        <p>Affordable performance with great battery life and sharp dual cameras.</p>
+                        <div class="product-footer">
+                            <span class="price">$499</span>
+                            <button class="btn-add" onclick="addToCart('Pulse Lite 5G', 499)">Add to Cart</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Category 3: Audio & Headphones -->
+        <div class="category-section">
+            <h2 class="category-title">Audio & Headphones</h2>
+            <div class="products-grid">
+                <div class="product-card">
+                    <div class="product-img-box"><img src="https://images.unsplash.com/photo-1505740420928-5e560c06d30e" alt="Headphones"></div>
+                    <div class="product-info">
+                        <h3>SonicBass Wireless</h3>
+                        <p>Active noise cancellation, deep bass, and 40 hours of continuous playback.</p>
+                        <div class="product-footer">
+                            <span class="price">$249</span>
+                            <button class="btn-add" onclick="addToCart('SonicBass Wireless', 249)">Add to Cart</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="product-card">
+                    <div class="product-img-box"><img src="https://images.unsplash.com/photo-1590658268037-6bf12165a8df" alt="Earbuds"></div>
+                    <div class="product-info">
+                        <h3>AirPods Pro Max</h3>
+                        <p>True wireless earbuds with spatial audio and crystal-clear microphone.</p>
+                        <div class="product-footer">
+                            <span class="price">$199</span>
+                            <button class="btn-add" onclick="addToCart('AirPods Pro Max', 199)">Add to Cart</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="product-card">
+                    <div class="product-img-box"><img src="https://images.unsplash.com/photo-1546435770-a3e426bf472b" alt="Headphones"></div>
+                    <div class="product-info">
+                        <h3>Studio Pro Monitors</h3>
+                        <p>Over-ear studio headphones designed for professional audio mixing.</p>
+                        <div class="product-footer">
+                            <span class="price">$299</span>
+                            <button class="btn-add" onclick="addToCart('Studio Pro Monitors', 299)">Add to Cart</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+ <!-- Category 4: Wearables -->
+        <div class="category-section">
+            <h2 class="category-title">Smart Wearables</h2>
+            <div class="products-grid">
+                <div class="product-card">
+                    <div class="product-img-box"><img src="https://images.unsplash.com/photo-1523275335684-37898b6baf30" alt="Watch"></div>
+                    <div class="product-info">
+                        <h3>Titan SmartWatch 3</h3>
+                        <p>Fitness tracking, heart rate monitor, GPS, and waterproof build.</p>
+                        <div class="product-footer">
+                            <span class="price">$299</span>
+                            <button class="btn-add" onclick="addToCart('Titan SmartWatch 3', 299)">Add to Cart</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="product-card">
+                    <div class="product-img-box"><img src="https://images.unsplash.com/photo-1508685096489-7aacd43bd3b1" alt="Watch"></div>
+                    <div class="product-info">
+                        <h3>Pulse Fit Band</h3>
+                        <p>Lightweight smart band to track your daily steps, sleep, and calories.</p>
+                        <div class="product-footer">
+                            <span class="price">$99</span>
+                            <button class="btn-add" onclick="addToCart('Pulse Fit Band', 99)">Add to Cart</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="product-card">
+                    <div class="product-img-box"><img src="https://images.unsplash.com/photo-1579586337278-3befd40fd17a" alt="Watch"></div>
+                    <div class="product-info">
+                        <h3>CyberSport Edition</h3>
+                        <p>Rugged outdoor smartwatch designed for extreme athletes and explorers.</p>
+                        <div class="product-footer">
+                            <span class="price">$349</span>
+                            <button class="btn-add" onclick="addToCart('CyberSport Edition', 349)">Add to Cart</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Category 5: Gaming Gear -->
+        <div class="category-section">
+            <h2 class="category-title">Gaming Gear</h2>
+            <div class="products-grid">
+                <div class="product-card">
+                    <div class="product-img-box"><img src="https://images.unsplash.com/photo-1612287230202-1ff1d85d1bdf" alt="Controller"></div>
+                    <div class="product-info">
+                        <h3>CyberPad Controller</h3>
+                        <p>Ergonomic wireless gamepad with customizable triggers and RGB lighting.</p>
+                        <div class="product-footer">
+                            <span class="price">$79</span>
+                            <button class="btn-add" onclick="addToCart('CyberPad Controller', 79)">Add to Cart</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="product-card">
+                    <div class="product-img-box"><img src="https://images.unsplash.com/photo-1587829741301-dc798b83add3" alt="Keyboard"></div>
+                    <div class="product-info">
+                        <h3>MechRGB Keyboard</h3>
+                        <p>Mechanical switches, custom RGB backlight, and anti-ghosting keys.</p>
+                        <div class="product-footer">
+                            <span class="price">$129</span>
+                            <button class="btn-add" onclick="addToCart('MechRGB Keyboard', 129)">Add to Cart</button>
+                        </div>
+                   </div>
+                </div>
+                <div class="product-card">
+                    <div class="product-img-box"><img src="https://images.unsplash.com/photo-1615663245857-ac93bb7c39e7" alt="Mouse"></div>
+                    <div class="product-info">
+                        <h3>Viper Precision Mouse</h3>
+                        <p>Ultra-lightweight gaming mouse with high DPI sensor and fast response.</p>
+                        <div class="product-footer">
+                            <span class="price">$89</span>
+                            <button class="btn-add" onclick="addToCart('Viper Precision Mouse', 89)">Add to Cart</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+ <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="footer-col">
+                <h3><span>Tech</span>Store</h3>
+                <p>Your ultimate destination for premium tech.</p>
+            </div>
+            <div class="footer-col">
+                <h4>Shop</h4>
+                <ul>
+                    <li><a href="shop.html">All Products</a></li>
+                    <li><a href="shop.html">Laptops</a></li>
+                    <li><a href="shop.html">Phones</a></li>
+                </ul>
+            </div>
+            <div class="footer-col">
+                <h4>Support</h4>
+                <ul>
+                    <li><a href="contact.html">Contact Us</a></li>
+                    <li><a href="#">Shipping</a></li>
+                    <li><a href="#">Returns</a></li>
+                </ul>
+            </div>
+            <div class="footer-col">
+                <h4>Account</h4>
+                <ul>
+                    <li><a href="account.html">Login</a></li>
+                    <li><a href="account.html">Register</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2026 <span>TechStore</span>. All rights reserved.</p>
+        </div>
+    </footer>
+</body>
+</html>
+
+<script src="index.js"></script>
