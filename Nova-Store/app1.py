@@ -1,5 +1,6 @@
 import json
 import os
+from datetime import datetime, timezone
 from functools import wraps
 
 from flask import Flask, flash, redirect, render_template, request, session, url_for
@@ -47,6 +48,7 @@ class Order(db.Model):
     payment_method = db.Column(db.String(50))
     status = db.Column(db.String(20), default='Pending')
     total_amount = db.Column(db.Float, nullable=False)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     items = db.relationship('OrderItem', backref='order', lazy=True,
                             cascade='all, delete-orphan')
 
@@ -57,6 +59,7 @@ class Order(db.Model):
 class OrderItem(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     order_id = db.Column(db.Integer, db.ForeignKey('order.id'), nullable=False)
+    product_id = db.Column(db.Integer, db.ForeignKey('product.id'), nullable=True)
     title = db.Column(db.String(150), nullable=False)
     quantity = db.Column(db.Integer, nullable=False, default=1)
     price = db.Column(db.Float, nullable=False)
@@ -98,7 +101,7 @@ PRODUCT_SEED = [
     ("SlimBook Air", "Ultra-thin, lightweight design with all-day battery life for professionals.", 999, "https://images.unsplash.com/photo-1541807084-5c52b6b3adef", "Laptops"),
     ("NovaPhone 14 Pro", "Triple camera setup, 120Hz OLED screen, massive storage capacity.", 899, "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9", "Smartphones"),
     ("Apex X Phone", "Sleek futuristic design with lightning-fast processor and 5G support.", 749, "https://images.unsplash.com/photo-1565849904461-04a58ad377e0", "Smartphones"),
-    ("Pulse Lite 5G", "Affordable performance with great battery life and sharp dual cameras.", 499, "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9", "Smartphones"),
+    ("Pulse Lite 5G", "Affordable performance with great battery life and sharp dual cameras.", 499, "https://images.unsplash.com/photo-1512499617640-c74ae3a79d37", "Smartphones"),
     ("SonicBass Wireless", "Active noise cancellation, deep bass, and 40 hours of continuous playback.", 249, "https://images.unsplash.com/photo-1505740420928-5e560c06d30e", "Audio & Headphones"),
     ("AirPods Pro Max", "True wireless earbuds with spatial audio and crystal-clear microphone.", 199, "https://images.unsplash.com/photo-1590658268037-6bf12165a8df", "Audio & Headphones"),
     ("Studio Pro Monitors", "Over-ear studio headphones designed for professional audio mixing.", 299, "https://images.unsplash.com/photo-1546435770-a3e426bf472b", "Audio & Headphones"),
@@ -143,8 +146,12 @@ def _migrate_existing_tables():
         _add_column_if_missing('order', 'phone', 'VARCHAR(50)')
         _add_column_if_missing('order', 'payment_method', 'VARCHAR(50)')
         _add_column_if_missing('order', 'status', 'VARCHAR(20) DEFAULT \'Pending\'')
+        _add_column_if_missing('order', 'created_at', 'DATETIME')
     if 'product' in tables:
         _add_column_if_missing('product', 'category', 'VARCHAR(50)')
+    if 'order_item' in tables:
+        _add_column_if_missing('order_item', 'product_id',
+                               'INTEGER REFERENCES product(id)')
 
 
 def _seed_products():
@@ -188,6 +195,16 @@ def ensure_db_initialized():
 # ==========================
 # Helpers / auth
 # ==========================
+
+def _is_valid_email(email):
+    email = (email or '').strip()
+    if email.count('@') != 1:
+        return False
+    local, _, domain = email.partition('@')
+    if not local or not domain:
+        return False
+    return '.' in domain and not domain.startswith('.') and not domain.endswith('.')
+
 
 def login_required(view):
     @wraps(view)
@@ -240,6 +257,10 @@ def contact():
             flash('Please fill in all required fields.', 'error')
             return redirect(url_for('contact'))
 
+        if not _is_valid_email(email):
+            flash('Please enter a valid email address.', 'error')
+            return redirect(url_for('contact'))
+
         new_message = ContactMessage(name=name, email=email,
                                      subject=subject, message=message)
         db.session.add(new_message)
@@ -276,6 +297,10 @@ def account():
             flash('Please fill in all required fields.', 'error')
             return redirect(url_for('account'))
 
+        if not _is_valid_email(email):
+            flash('Please enter a valid email address.', 'error')
+            return redirect(url_for('account'))
+
         customer = Customer(full_name=full_name, email=email,
                             password=generate_password_hash(password))
         try:
@@ -295,7 +320,7 @@ def account():
 
 @app.route('/logout')
 def logout():
-    session.pop('customer_id', None)
+    session.clear()
     flash('You have been logged out.', 'success')
     return redirect(url_for('home'))
 
@@ -323,17 +348,42 @@ def checkout():
             flash('Please complete your billing details and add items to your cart.', 'error')
             return redirect(url_for('checkout'))
 
-        try:
-            total_amount = float(request.form.get('total_amount') or 0)
-        except (TypeError, ValueError):
-            total_amount = 0.0
-            for item in cart:
-                if not isinstance(item, dict):
-                    continue
-                try:
-                    total_amount += float(item.get('price') or 0) * int(item.get('quantity') or 1)
-                except (TypeError, ValueError):
-                    continue
+        if not _is_valid_email(email):
+            flash('Please enter a valid email address.', 'error')
+            return redirect(url_for('checkout'))
+
+        products_by_title = {
+            p.name: p for p in Product.query.all()
+        }
+        merged = {}
+        for item in cart:
+            if not isinstance(item, dict):
+                continue
+            title = str(item.get('title') or '').strip()
+            if not title:
+                continue
+            product = products_by_title.get(title)
+            try:
+                quantity = max(1, int(item.get('quantity') or 1))
+            except (TypeError, ValueError):
+                quantity = 1
+            price = product.price if product is not None else 0.0
+            if title in merged:
+                merged[title]['quantity'] += quantity
+            else:
+                merged[title] = {
+                    'product_id': product.id if product is not None else None,
+                    'price': price,
+                    'quantity': quantity,
+                }
+
+        if not merged:
+            flash('Your cart does not contain any valid items.', 'error')
+            return redirect(url_for('checkout'))
+
+        total_amount = sum(
+            entry['price'] * entry['quantity'] for entry in merged.values()
+        )
 
         order = Order(
             customer_id=session.get('customer_id'),
@@ -347,27 +397,13 @@ def checkout():
             total_amount=total_amount,
             status='Pending',
         )
-        for item in cart:
-            if not isinstance(item, dict):
-                continue
-            try:
-                item_title = str(item.get('title') or 'Item')
-                item_quantity = int(item.get('quantity') or 1)
-                item_price = float(item.get('price') or 0)
-            except (TypeError, ValueError):
-                item_title = str(item.get('title') or 'Item')
-                item_quantity = 1
-                item_price = 0
+        for title, entry in merged.items():
             order.items.append(OrderItem(
-                title=item_title,
-                quantity=item_quantity,
-                price=item_price,
+                product_id=entry['product_id'],
+                title=title,
+                quantity=entry['quantity'],
+                price=entry['price'],
             ))
-
-        if not order.items:
-            db.session.rollback()
-            flash('Your cart does not contain any valid items.', 'error')
-            return redirect(url_for('checkout'))
 
         db.session.add(order)
         db.session.commit()
@@ -403,6 +439,9 @@ def update_order_status(order_id, status):
     order = (Order.query
              .filter_by(id=order_id, customer_id=session['customer_id'])
              .first_or_404())
+    if status not in ('Pending', 'Shipped', 'Delivered'):
+        flash('Invalid order status.', 'error')
+        return redirect(url_for('order_detail', order_id=order.id))
     order.status = status
     db.session.commit()
     flash(f'Order #{order.id} marked as {status}.', 'success')

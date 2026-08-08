@@ -104,7 +104,7 @@
                 </div>
                 <div class="summary-row">
                     <span>Shipping:</span>
-                    <span>$15.00</span>
+                    <span id="checkout-shipping">$15.00</span>
                 </div>
                 <div class="summary-row total">
                     <span>Total:</span>
@@ -112,7 +112,7 @@
                 </div>
             </div>
 
-            <button type="button" class="btn-checkout" onclick="submitOrder()">Place Order Now</button>
+            <button type="button" class="btn-checkout" onclick="document.getElementById('checkoutForm').requestSubmit()">Place Order Now</button>
         </div>
 
     </div>

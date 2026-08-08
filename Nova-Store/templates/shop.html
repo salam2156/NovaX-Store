@@ -27,6 +27,16 @@
         </ul>
     </header>
 
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div class="flash-messages" style="width:100%;max-width:1200px;margin:0 auto;padding:20px 20px 0;">
+        {% for category, message in messages %}
+        <div class="alert {{ category }}">{{ message }}</div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% endwith %}
+
     <!-- Shop Content -->
     <div class="shop-container">
         <div class="shop-header">
@@ -38,6 +48,8 @@
                 <i class="fa-solid fa-magnifying-glass"></i>
                 <input type="text" id="searchInput" placeholder="Search products by name or feature..." onkeyup="filterProducts()">
             </div>
+
+            <div id="search-empty" class="no-results hidden">No products found.</div>
         </div>
 
         {% for category in categories %}
@@ -45,7 +57,7 @@
             <h2 class="category-title">{{ category }}</h2>
             <div class="products-grid">
                 {% for product in products if product.category == category %}
-                <div class="product-card" data-name="{{ product.name|lower }}">
+                <div class="product-card" data-search="{{ (product.name ~ ' ' ~ product.description)|lower }}">
                     <div class="product-img-box"><img src="{{ product.image_url }}" alt="{{ product.name }}"></div>
                     <div class="product-info">
                         <h3>{{ product.name }}</h3>

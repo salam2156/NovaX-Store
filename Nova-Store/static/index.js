@@ -68,10 +68,24 @@ function addToCart(title, price) {
 
 function filterProducts() {
     const query = (document.getElementById('searchInput').value || '').toLowerCase().trim();
-    document.querySelectorAll('.product-card').forEach(function (card) {
-        const name = (card.getAttribute('data-name') || '').toLowerCase();
-        card.style.display = name.includes(query) ? '' : 'none';
+    let anyVisible = false;
+
+    document.querySelectorAll('.category-section').forEach(function (section) {
+        let visibleCount = 0;
+        section.querySelectorAll('.product-card').forEach(function (card) {
+            const text = (card.getAttribute('data-search') || '').toLowerCase();
+            const matches = text.includes(query);
+            card.style.display = matches ? '' : 'none';
+            if (matches) visibleCount += 1;
+        });
+        section.style.display = visibleCount > 0 ? '' : 'none';
+        if (visibleCount > 0) anyVisible = true;
     });
+
+    const emptyState = document.getElementById('search-empty');
+    if (emptyState) {
+        emptyState.classList.toggle('hidden', !query || anyVisible);
+    }
 }
 
 // ==========================
@@ -122,6 +136,8 @@ function renderCheckout() {
     const total = subtotal + shipping;
 
     if (subtotalEl) subtotalEl.textContent = '$' + subtotal.toFixed(2);
+    const shippingEl = document.getElementById('checkout-shipping');
+    if (shippingEl) shippingEl.textContent = '$' + shipping.toFixed(2);
     if (totalEl) totalEl.textContent = '$' + total.toFixed(2);
 
     const totalInput = document.getElementById('total_amount');
@@ -170,13 +186,30 @@ function processOrder(event) {
         body: new FormData(form),
         redirect: 'follow'
     }).then(function (response) {
-        if (response.redirected || response.ok) {
-            localStorage.removeItem('techstore_cart');
-            window.location.href = response.url || form.action;
-        } else {
+        if (!response.ok) {
             alert('There was a problem placing your order. Please try again.');
             if (button) button.disabled = false;
+            return;
         }
+
+        let finalPath = form.action;
+        try {
+            finalPath = new URL(response.url).pathname;
+        } catch (e) {
+            // fall back to the form action when the URL cannot be parsed
+        }
+
+        if (finalPath === form.action || finalPath === window.location.pathname) {
+            // Validation error: the server redirected back to checkout with a flash
+            // message. Keep the cart and let the flash message display.
+            if (button) button.disabled = false;
+            window.location.href = response.url;
+            return;
+        }
+
+        localStorage.removeItem('techstore_cart');
+        updateCartCount();
+        window.location.href = response.url;
     }).catch(function () {
         alert('Network error while placing your order. Please try again.');
         if (button) button.disabled = false;

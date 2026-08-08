@@ -17,8 +17,10 @@
             <li><a href="{{ url_for('checkout') }}">Checkout</a></li>
             <li><a href="{{ url_for('contact') }}">Contact</a></li>
             <li><a href="{{ url_for('about') }}">About</a></li>
+            {% if current_customer %}
             <li><a href="{{ url_for('my_orders') }}" class="active">My Orders</a></li>
             <li><a href="{{ url_for('logout') }}">Logout</a></li>
+            {% endif %}
             <li><a href="{{ url_for('checkout') }}" class="cart-btn"><i class="fa-solid fa-cart-shopping"></i> Cart (<span id="cart-count">0</span>)</a></li>
         </ul>
     </header>
@@ -49,10 +51,11 @@
                             <span>${{ '%.2f'|format(entry.order.total_amount) }}</span>
                         </div>
                         <p><strong>Status:</strong> <span class="status-badge {{ entry.order.status|lower }}">{{ entry.order.status }}</span></p>
+                        {% if entry.order.created_at %}<p><strong>Placed:</strong> {{ entry.order.created_at.strftime('%b %d, %Y %H:%M') }}</p>{% endif %}
                         <p><strong>Address:</strong> {{ entry.order.address }}</p>
-                        <p><strong>City:</strong> {{ entry.order.city }}</p>
-                        <p><strong>Phone:</strong> {{ entry.order.phone }}</p>
-                        <p><strong>Payment:</strong> {{ entry.order.payment_method }}</p>
+                        {% if entry.order.city %}<p><strong>City:</strong> {{ entry.order.city }}</p>{% endif %}
+                        {% if entry.order.phone %}<p><strong>Phone:</strong> {{ entry.order.phone }}</p>{% endif %}
+                        {% if entry.order.payment_method %}<p><strong>Payment:</strong> {{ entry.order.payment_method }}</p>{% endif %}
                         <ul>
                             {% for item in entry.order_items %}
                             <li>{{ item.title }} × {{ item.quantity }}</li>

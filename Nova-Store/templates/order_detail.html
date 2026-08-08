@@ -17,8 +17,10 @@
             <li><a href="{{ url_for('checkout') }}">Checkout</a></li>
             <li><a href="{{ url_for('contact') }}">Contact</a></li>
             <li><a href="{{ url_for('about') }}">About</a></li>
+            {% if current_customer %}
             <li><a href="{{ url_for('my_orders') }}">My Orders</a></li>
             <li><a href="{{ url_for('logout') }}">Logout</a></li>
+            {% endif %}
             <li><a href="{{ url_for('checkout') }}" class="cart-btn"><i class="fa-solid fa-cart-shopping"></i> Cart (<span id="cart-count">0</span>)</a></li>
         </ul>
     </header>
@@ -44,9 +46,10 @@
                 <div class="account-info-card">
                     <p><strong>Customer:</strong> {{ current_customer.full_name }}</p>
                     <p><strong>Email:</strong> {{ order.email }}</p>
-                    <p><strong>Address:</strong> {{ order.address }}, {{ order.city }}</p>
-                    <p><strong>Phone:</strong> {{ order.phone }}</p>
-                    <p><strong>Payment:</strong> {{ order.payment_method }}</p>
+                    {% if order.created_at %}<p><strong>Placed:</strong> {{ order.created_at.strftime('%b %d, %Y %H:%M') }}</p>{% endif %}
+                    <p><strong>Address:</strong> {{ order.address }}{% if order.city %}, {{ order.city }}{% endif %}</p>
+                    {% if order.phone %}<p><strong>Phone:</strong> {{ order.phone }}</p>{% endif %}
+                    {% if order.payment_method %}<p><strong>Payment:</strong> {{ order.payment_method }}</p>{% endif %}
                     <p><strong>Total:</strong> ${{ '%.2f'|format(order.total_amount) }}</p>
                 </div>
 

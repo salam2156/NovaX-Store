@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: nova-store
+    runtime: python
+    rootDir: Nova-Store
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app1:app --bind 0.0.0.0:$PORT
+    healthCheckPath: /
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: PYTHON_VERSION
+        value: 3.13.3
