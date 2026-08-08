@@ -1,95 +1,106 @@
- <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nova-Store | Account</title>
-    <!-- FontAwesome Icons -->
+    <title>Nova-Store | Home</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-   
 </head>
 <body>
 
-    <!--  Navbar -->
+    <!-- Navbar -->
     <header class="navbar">
-        <a href="index.html" class="logo"><i class="fa-solid fa-store"></i> Nova<span>-Store</span></a>
+        <a href="{{ url_for('home') }}" class="logo"><i class="fa-solid fa-store"></i> Nova<span>-Store</span></a>
         <ul class="nav-links">
-            <li><a href="account.html" class="active">Account</a></li>
-            <li><a href="index.html">Home</a></li>
-            <li><a href="shop.html">Shop</a></li>
-            <li><a href="checkout.html">Checkout</a></li>
-            <li><a href="contact.html">Contact</a></li>
-            <li><a href="about.html">About</a></li>
-            <!-- Navbar -->
-<header class="navbar">
-    <a href="{{ url_for('index') }}" class="logo"><i class="fa-solid fa-store"></i> Nova<span>-Store</span></a>
-    <ul class="nav-links">
-        <li><a href="{{ url_for('home') }}" class="active">Account</a></li>
-        <li><a href="{{ url_for('shop') }}">Home</a></li>
-        <li><a href="{{ url_for('checkout') }}">checkout</a></li>
-
-        <!-- وبقية الروابط بنفس الطريقة -->
-    </ul>
-</header>
+            <li><a href="{{ url_for('account') }}">Account</a></li>
+            <li><a href="{{ url_for('home') }}" class="active">Home</a></li>
+            <li><a href="{{ url_for('shop') }}">Shop</a></li>
+            <li><a href="{{ url_for('checkout') }}">Checkout</a></li>
+            <li><a href="{{ url_for('contact') }}">Contact</a></li>
+            <li><a href="{{ url_for('about') }}">About</a></li>
+            {% if current_customer %}
+            <li><a href="{{ url_for('my_orders') }}">My Orders</a></li>
+            <li><a href="{{ url_for('logout') }}">Logout</a></li>
+            {% endif %}
+            <li><a href="{{ url_for('checkout') }}" class="cart-btn"><i class="fa-solid fa-cart-shopping"></i> Cart (<span id="cart-count">0</span>)</a></li>
         </ul>
     </header>
 
-    <!-- Single Container for Account (Switches between Login and Register) -->
-    <main class="auth-container">
-        <div class="auth-card">
-            
-            <!-- Login Form (Default) -->
-            <div id="login-section">
-                <div class="auth-header">
-                    <h2>Welcome Back</h2>
-                    <p>Enter your email to sign in to your account</p>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div class="flash-messages" style="width:100%;max-width:1200px;margin:0 auto;padding:20px 20px 0;">
+        {% for category, message in messages %}
+        <div class="alert {{ category }}">{{ message }}</div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% endwith %}
+
+    <!-- Main Content -->
+    <div class="main-container">
+        <!-- Hero Section -->
+        <section class="hero">
+            <div class="hero-banner">
+                <div class="hero-content">
+                    <span class="hero-badge">New Arrivals</span>
+                    <h1>Upgrade Your Tech Experience</h1>
+                    <p>Discover the latest high-performance gadgets, accessories, and electronics with unbeatable prices and premium quality.</p>
+                    <a href="{{ url_for('shop') }}" class="btn-primary">Shop Now</a>
                 </div>
-                <form onsubmit="event.preventDefault(); alert('Logged in successfully!'); window.location.href='index.html';">
-                    <div class="form-group">
-                        <label>Email Address</label>
-                        <input type="email" placeholder="name@example.com" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Password</label>
-                        <input type="password" placeholder="Enter your password" required>
-                    </div>
-                    <button type="submit" class="btn-submit">Login</button>
-                </form>
-                <div class="toggle-text">
-                    Don't have an account? <a onclick="toggleForms()">Register new account</a>
+                <div class="hero-img-box">
+                    <img src="https://images.unsplash.com/photo-1517336714731-489689fd1ca8" alt="Tech Showcase">
                 </div>
             </div>
+        </section>
 
-            <!-- Register Form (Hidden by default) -->
-            <div id="register-section" class="hidden">
-                <div class="auth-header">
-                    <h2>Create Account</h2>
-                    <p>Fill in your information to get started</p>
-                </div>
-                <form onsubmit="event.preventDefault(); alert('Account created successfully!'); window.location.href='index.html';">
-                    <div class="form-group">
-                        <label>Full Name</label>
-                        <input type="text" placeholder="Enter your full name" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Email Address</label>
-                        <input type="email" placeholder="name@example.com" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Password</label>
-                        <input type="password" placeholder="Create a password" required>
-</div>
-                    <button type="submit" class="btn-submit">Sign Up</button>
-                </form>
-                <div class="toggle-text">
-                    Already have an account? <a onclick="toggleForms()">Login here</a>
-                </div>
+        <!-- Features Section -->
+        <section class="features-grid">
+            <div class="feature-card">
+                <i class="fa-solid fa-truck-fast"></i>
+                <h3>Fast Delivery</h3>
+                <p>Quick and reliable shipping right to your doorstep worldwide.</p>
             </div>
+            <div class="feature-card">
+                <i class="fa-solid fa-shield-halved"></i>
+                <h3>Secure Payment</h3>
+                <p>100% secure checkout processes for total peace of mind.</p>
+            </div>
+            <div class="feature-card">
+                <i class="fa-solid fa-headset"></i>
+                <h3>24/7 Support</h3>
+                <p>Dedicated customer service team ready to help you anytime.</p>
+            </div>
+        </section>
+    </div>
 
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="footer-col">
+                <h3><span>Nova</span>-Store</h3>
+                <p>Your ultimate destination for high-performance tech gadgets and accessories.</p>
+            </div>
+            <div class="footer-col">
+                <h4>Quick Links</h4>
+                <ul>
+                    <li><a href="{{ url_for('home') }}">Home</a></li>
+                    <li><a href="{{ url_for('shop') }}">Shop</a></li>
+                    <li><a href="{{ url_for('about') }}">About Us</a></li>
+                    <li><a href="{{ url_for('contact') }}">Contact</a></li>
+                </ul>
+            </div>
+            <div class="footer-col">
+                <h4>Contact Us</h4>
+                <p><i class="fa-solid fa-envelope"></i> support@novastore.com</p>
+                <p><i class="fa-solid fa-phone"></i> +1 234 567 890</p>
+            </div>
         </div>
-        
-    </main>
+        <div class="footer-bottom">
+            <p>&copy; 2026 <span>Nova-Store</span>. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script src="{{ url_for('static', filename='index.js') }}"></script>
 </body>
 </html>
-<script src="index.js"></script>

@@ -160,10 +160,27 @@ function processOrder(event) {
     }
 
     const form = document.getElementById('checkoutForm');
-    if (form) {
-        localStorage.removeItem('techstore_cart');
-        form.submit();
-    }
+    if (!form) return;
+
+    const button = form.querySelector('button[type="submit"]');
+    if (button) button.disabled = true;
+
+    fetch(form.action, {
+        method: 'POST',
+        body: new FormData(form),
+        redirect: 'follow'
+    }).then(function (response) {
+        if (response.redirected || response.ok) {
+            localStorage.removeItem('techstore_cart');
+            window.location.href = response.url || form.action;
+        } else {
+            alert('There was a problem placing your order. Please try again.');
+            if (button) button.disabled = false;
+        }
+    }).catch(function () {
+        alert('Network error while placing your order. Please try again.');
+        if (button) button.disabled = false;
+    });
 }
 
 function submitOrder() {

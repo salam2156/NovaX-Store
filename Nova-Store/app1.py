@@ -1,42 +1,69 @@
-from flask import Flask, render_template, request, redirect, url_for  # type: ignore[reportMissingImports]
+import json
+import os
+from functools import wraps
+
+from flask import Flask, flash, redirect, render_template, request, session, url_for
+from sqlalchemy import text
+from sqlalchemy.exc import IntegrityError
+from werkzeug.security import check_password_hash, generate_password_hash
 
 try:
-    from flask_sqlalchemy import SQLAlchemy  # type: ignore[reportMissingImports]
+    from flask_sqlalchemy import SQLAlchemy
 except ImportError as exc:
     raise ImportError(
         "Flask-SQLAlchemy is not installed. Install it using 'pip install Flask-SQLAlchemy' and try again."
     ) from exc
 
-# Create Flask app
-app = Flask(__name__) # تم تصحيح name
-
-# إعداد قاعدة البيانات SQLite
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///store.db'
+app = Flask(__name__)
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'nova-store-dev-key')
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get(
+    'DATABASE_URL', 'sqlite:///store.db'
+)
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# ربط SQLAlchemy بالتطبيق
-db = SQLAlchemy()
-db.init_app(app)
+db = SQLAlchemy(app)
+
 
 class Customer(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     full_name = db.Column(db.String(100), nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
     password = db.Column(db.String(255), nullable=False)
+    orders = db.relationship('Order', backref='customer', lazy=True)
 
-    def repr(self):
+    def __repr__(self):
         return f"<Customer {self.full_name}>"
+
 
 class Order(db.Model):
     id = db.Column(db.Integer, primary_key=True)
+    customer_id = db.Column(db.Integer, db.ForeignKey('customer.id'), nullable=True)
     first_name = db.Column(db.String(50), nullable=False)
     last_name = db.Column(db.String(50), nullable=False)
     email = db.Column(db.String(100), nullable=False)
     address = db.Column(db.String(200), nullable=False)
+    city = db.Column(db.String(100))
+    phone = db.Column(db.String(50))
+    payment_method = db.Column(db.String(50))
+    status = db.Column(db.String(20), default='Pending')
     total_amount = db.Column(db.Float, nullable=False)
+    items = db.relationship('OrderItem', backref='order', lazy=True,
+                            cascade='all, delete-orphan')
 
-    def repr(self):
+    def __repr__(self):
         return f"<Order {self.id}>"
+
+
+class OrderItem(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    order_id = db.Column(db.Integer, db.ForeignKey('order.id'), nullable=False)
+    title = db.Column(db.String(150), nullable=False)
+    quantity = db.Column(db.Integer, nullable=False, default=1)
+    price = db.Column(db.Float, nullable=False)
+
+    def __repr__(self):
+        return f"<OrderItem {self.title}>"
+
 
 class Product(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -44,9 +71,11 @@ class Product(db.Model):
     description = db.Column(db.Text)
     price = db.Column(db.Float, nullable=False)
     image_url = db.Column(db.String(255))
+    category = db.Column(db.String(50))
 
-    def repr(self):
+    def __repr__(self):
         return f"<Product {self.name}>"
+
 
 class ContactMessage(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -55,66 +84,330 @@ class ContactMessage(db.Model):
     subject = db.Column(db.String(150))
     message = db.Column(db.Text, nullable=False)
 
-    def repr(self):
+    def __repr__(self):
         return f"<ContactMessage {self.name}>"
 
-with app.app_context():
-    db.create_all()
 
-# Home Page
+# ==========================
+# Database bootstrap
+# ==========================
+
+PRODUCT_SEED = [
+    ("Pro UltraBook X1", "Powerful 16GB RAM, 512GB SSD, stunning 4K display for creators.", 1299, "https://images.unsplash.com/photo-1517336714731-489689fd1ca8", "Laptops"),
+    ("Gaming Beast G15", "Dedicated graphics card, high refresh rate, built for extreme gaming.", 1599, "https://images.unsplash.com/photo-1496181133206-80ce9b88a853", "Laptops"),
+    ("SlimBook Air", "Ultra-thin, lightweight design with all-day battery life for professionals.", 999, "https://images.unsplash.com/photo-1541807084-5c52b6b3adef", "Laptops"),
+    ("NovaPhone 14 Pro", "Triple camera setup, 120Hz OLED screen, massive storage capacity.", 899, "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9", "Smartphones"),
+    ("Apex X Phone", "Sleek futuristic design with lightning-fast processor and 5G support.", 749, "https://images.unsplash.com/photo-1565849904461-04a58ad377e0", "Smartphones"),
+    ("Pulse Lite 5G", "Affordable performance with great battery life and sharp dual cameras.", 499, "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9", "Smartphones"),
+    ("SonicBass Wireless", "Active noise cancellation, deep bass, and 40 hours of continuous playback.", 249, "https://images.unsplash.com/photo-1505740420928-5e560c06d30e", "Audio & Headphones"),
+    ("AirPods Pro Max", "True wireless earbuds with spatial audio and crystal-clear microphone.", 199, "https://images.unsplash.com/photo-1590658268037-6bf12165a8df", "Audio & Headphones"),
+    ("Studio Pro Monitors", "Over-ear studio headphones designed for professional audio mixing.", 299, "https://images.unsplash.com/photo-1546435770-a3e426bf472b", "Audio & Headphones"),
+    ("Titan SmartWatch 3", "Fitness tracking, heart rate monitor, GPS, and waterproof build.", 299, "https://images.unsplash.com/photo-1523275335684-37898b6baf30", "Wearables"),
+    ("Pulse Fit Band", "Lightweight smart band to track your daily steps, sleep, and calories.", 99, "https://images.unsplash.com/photo-1508685096489-7aacd43bd3b1", "Wearables"),
+    ("CyberSport Edition", "Rugged outdoor smartwatch designed for extreme athletes and explorers.", 349, "https://images.unsplash.com/photo-1579586337278-3befd40fd17a", "Wearables"),
+    ("CyberPad Controller", "Ergonomic wireless gamepad with customizable triggers and RGB lighting.", 79, "https://images.unsplash.com/photo-1612287230202-1ff1d85d1bdf", "Gaming Gear"),
+    ("MechRGB Keyboard", "Mechanical switches, custom RGB backlight, and anti-ghosting keys.", 129, "https://images.unsplash.com/photo-1587829741301-dc798b83add3", "Gaming Gear"),
+    ("Viper Precision Mouse", "Ultra-lightweight gaming mouse with high DPI sensor and fast response.", 89, "https://images.unsplash.com/photo-1615663245857-ac93bb7c39e7", "Gaming Gear"),
+]
+
+SHOP_CATEGORIES = [
+    "Laptops", "Smartphones", "Audio & Headphones", "Wearables", "Gaming Gear"
+]
+
+
+def _table_columns(table_name):
+    rows = db.session.execute(
+        text('PRAGMA table_info("{}")'.format(table_name))
+    ).fetchall()
+    return [row[1] for row in rows]
+
+
+def _add_column_if_missing(table_name, column_name, column_ddl):
+    if column_name not in _table_columns(table_name):
+        db.session.execute(
+            text('ALTER TABLE "{}" ADD COLUMN {} {}'.format(table_name, column_name, column_ddl))
+        )
+        db.session.commit()
+
+
+def _migrate_existing_tables():
+    # The PRAGMA-based column migration is SQLite-specific.
+    if db.engine.dialect.name != 'sqlite':
+        return
+    tables = [row[0] for row in db.session.execute(
+        text("SELECT name FROM sqlite_master WHERE type='table'")
+    ).fetchall()]
+    if 'order' in tables:
+        _add_column_if_missing('order', 'customer_id', 'INTEGER REFERENCES customer(id)')
+        _add_column_if_missing('order', 'city', 'VARCHAR(100)')
+        _add_column_if_missing('order', 'phone', 'VARCHAR(50)')
+        _add_column_if_missing('order', 'payment_method', 'VARCHAR(50)')
+        _add_column_if_missing('order', 'status', 'VARCHAR(20) DEFAULT \'Pending\'')
+    if 'product' in tables:
+        _add_column_if_missing('product', 'category', 'VARCHAR(50)')
+
+
+def _seed_products():
+    existing_by_name = {p.name: p for p in Product.query.all()}
+    for name, description, price, image_url, category in PRODUCT_SEED:
+        product = existing_by_name.get(name)
+        if product is None:
+            db.session.add(Product(name=name, description=description,
+                                   price=price, image_url=image_url,
+                                   category=category))
+        elif product.category is None:
+            product.category = category
+    db.session.commit()
+
+
+def init_db():
+    db.create_all()
+    _migrate_existing_tables()
+    _seed_products()
+
+
+_db_initialized = False
+
+
+@app.before_request
+def ensure_db_initialized():
+    global _db_initialized
+    if not _db_initialized:
+        _db_initialized = True
+        with app.app_context():
+            init_db()
+    else:
+        with app.app_context():
+            has_product_table = db.session.execute(
+                text("SELECT name FROM sqlite_master WHERE type='table' AND name='product'")
+            ).scalar()
+            if has_product_table and Product.query.count() == 0:
+                _seed_products()
+
+
+# ==========================
+# Helpers / auth
+# ==========================
+
+def login_required(view):
+    @wraps(view)
+    def wrapped(*args, **kwargs):
+        if 'customer_id' not in session:
+            flash('Please log in to access that page.', 'error')
+            return redirect(url_for('account'))
+        return view(*args, **kwargs)
+    return wrapped
+
+
+@app.context_processor
+def inject_current_customer():
+    customer = None
+    customer_id = session.get('customer_id')
+    if customer_id:
+        customer = db.session.get(Customer, customer_id)
+    return {'current_customer': customer}
+
+
+# ==========================
+# Pages
+# ==========================
+
 @app.route('/')
 def home():
     return render_template('index.html')
 
-# Shop Page
+
 @app.route('/shop')
 def shop():
-    products = Product.query.all()
-    return render_template('shop.html', products=products)
+    products = Product.query.order_by(Product.category, Product.name).all()
+    return render_template('shop.html', products=products, categories=SHOP_CATEGORIES)
 
-# About Page
+
 @app.route('/about')
 def about():
     return render_template('about.html')
 
-# Contact Page
+
 @app.route('/contact', methods=['GET', 'POST'])
 def contact():
     if request.method == 'POST':
-        name = request.form.get('name')
-        email = request.form.get('email')
-        subject = request.form.get('subject')
-        message = request.form.get('message')
-        new_message = ContactMessage(name=name, email=email, subject=subject, message=message)
+        name = (request.form.get('name') or '').strip()
+        email = (request.form.get('email') or '').strip()
+        subject = (request.form.get('subject') or '').strip()
+        message = (request.form.get('message') or '').strip()
+
+        if not name or not email or not message:
+            flash('Please fill in all required fields.', 'error')
+            return redirect(url_for('contact'))
+
+        new_message = ContactMessage(name=name, email=email,
+                                     subject=subject, message=message)
         db.session.add(new_message)
         db.session.commit()
+        flash('Your message has been sent successfully! We will get back to you soon.', 'success')
         return redirect(url_for('contact'))
+
     return render_template('contact.html')
 
-# index Page
-@app.route('/index', methods=['GET', 'POST'])
+
+@app.route('/account', methods=['GET', 'POST'])
 def account():
     if request.method == 'POST':
-        full_name = request.form.get('full_name')
-        email = request.form.get('email')
-        password = request.form.get('password')
-        customer = Customer(full_name=full_name, email=email, password=password)
-        db.session.add(customer)
-        db.session.commit()
-        return redirect(url_for('account')) # تم تصحيح الـ url_for
+        action = request.form.get('action')
+
+        if action == 'login':
+            email = (request.form.get('email') or '').strip()
+            password = request.form.get('password') or ''
+
+            customer = Customer.query.filter_by(email=email).first()
+            if customer and check_password_hash(customer.password, password):
+                session['customer_id'] = customer.id
+                flash(f'Welcome back, {customer.full_name}!', 'success')
+                return redirect(url_for('home'))
+
+            flash('Invalid email or password.', 'error')
+            return redirect(url_for('account'))
+
+        full_name = (request.form.get('full_name') or '').strip()
+        email = (request.form.get('email') or '').strip()
+        password = request.form.get('password') or ''
+
+        if not full_name or not email or not password:
+            flash('Please fill in all required fields.', 'error')
+            return redirect(url_for('account'))
+
+        customer = Customer(full_name=full_name, email=email,
+                            password=generate_password_hash(password))
+        try:
+            db.session.add(customer)
+            db.session.commit()
+        except IntegrityError:
+            db.session.rollback()
+            flash('An account with that email already exists. Please log in instead.', 'error')
+            return redirect(url_for('account'))
+
+        session['customer_id'] = customer.id
+        flash(f'Account created successfully. Welcome, {full_name}!', 'success')
+        return redirect(url_for('home'))
+
     return render_template('account.html')
 
-# Checkout Page
+
+@app.route('/logout')
+def logout():
+    session.pop('customer_id', None)
+    flash('You have been logged out.', 'success')
+    return redirect(url_for('home'))
+
+
 @app.route('/checkout', methods=['GET', 'POST'])
 def checkout():
     if request.method == 'POST':
-        first_name = request.form.get('first_name') # تم تصحيح المسافة البادئة
-        last_name = request.form.get('last_name')
-        email = request.form.get('email')
-        address = request.form.get('address')
-        total_amount = request.form.get('total_amount')
-        order = Order(first_name=first_name, last_name=last_name, email=email, address=address, total_amount=float(total_amount))
+        first_name = (request.form.get('first_name') or '').strip()
+        last_name = (request.form.get('last_name') or '').strip()
+        email = (request.form.get('email') or '').strip()
+        address = (request.form.get('address') or '').strip()
+        city = (request.form.get('city') or '').strip()
+        phone = (request.form.get('phone') or '').strip()
+        payment_method = request.form.get('payment_method') or ''
+        cart_data = request.form.get('cart_data') or '[]'
+
+        try:
+            cart = json.loads(cart_data)
+            if not isinstance(cart, list):
+                cart = []
+        except (ValueError, TypeError):
+            cart = []
+
+        if not first_name or not last_name or not email or not address or not cart:
+            flash('Please complete your billing details and add items to your cart.', 'error')
+            return redirect(url_for('checkout'))
+
+        try:
+            total_amount = float(request.form.get('total_amount') or 0)
+        except (TypeError, ValueError):
+            total_amount = 0.0
+            for item in cart:
+                if not isinstance(item, dict):
+                    continue
+                try:
+                    total_amount += float(item.get('price') or 0) * int(item.get('quantity') or 1)
+                except (TypeError, ValueError):
+                    continue
+
+        order = Order(
+            customer_id=session.get('customer_id'),
+            first_name=first_name,
+            last_name=last_name,
+            email=email,
+            address=address,
+            city=city,
+            phone=phone,
+            payment_method=payment_method,
+            total_amount=total_amount,
+            status='Pending',
+        )
+        for item in cart:
+            if not isinstance(item, dict):
+                continue
+            try:
+                item_title = str(item.get('title') or 'Item')
+                item_quantity = int(item.get('quantity') or 1)
+                item_price = float(item.get('price') or 0)
+            except (TypeError, ValueError):
+                item_title = str(item.get('title') or 'Item')
+                item_quantity = 1
+                item_price = 0
+            order.items.append(OrderItem(
+                title=item_title,
+                quantity=item_quantity,
+                price=item_price,
+            ))
+
+        if not order.items:
+            db.session.rollback()
+            flash('Your cart does not contain any valid items.', 'error')
+            return redirect(url_for('checkout'))
+
         db.session.add(order)
         db.session.commit()
+        flash('Order placed successfully! Thank you for shopping with Nova-Store.', 'success')
         return redirect(url_for('home'))
+
     return render_template('checkout.html')
+
+
+@app.route('/my_orders')
+@login_required
+def my_orders():
+    orders = (Order.query
+              .filter_by(customer_id=session['customer_id'])
+              .order_by(Order.id.desc())
+              .all())
+    entries = [{'order': order, 'order_items': order.items} for order in orders]
+    return render_template('my_orders.html', orders=entries)
+
+
+@app.route('/order/<int:order_id>')
+@login_required
+def order_detail(order_id):
+    order = (Order.query
+             .filter_by(id=order_id, customer_id=session['customer_id'])
+             .first_or_404())
+    return render_template('order_detail.html', order=order, items=order.items)
+
+
+@app.route('/order/<int:order_id>/status/<string:status>', methods=['POST'])
+@login_required
+def update_order_status(order_id, status):
+    order = (Order.query
+             .filter_by(id=order_id, customer_id=session['customer_id'])
+             .first_or_404())
+    order.status = status
+    db.session.commit()
+    flash(f'Order #{order.id} marked as {status}.', 'success')
+    return redirect(url_for('order_detail', order_id=order.id))
+
+
+if __name__ == '__main__':
+    app.run(debug=True)

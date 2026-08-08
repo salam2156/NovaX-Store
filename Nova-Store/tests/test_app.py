@@ -142,6 +142,52 @@ class AppTests(unittest.TestCase):
         with app.app_context():
             self.assertEqual(Order.query.count(), 0)
 
+    def test_checkout_handles_malformed_cart_data(self):
+        response = self.client.post('/checkout', data={
+            'first_name': 'Salam',
+            'last_name': 'Mohamed',
+            'email': 'salam@example.com',
+            'address': '123 Tech Street',
+            'cart_data': '[{"title": "Gadget", "price": "not-a-number", "quantity": "abc"}, "junk"]',
+        }, follow_redirects=True)
+        self.assertEqual(response.status_code, 200)
+        with app.app_context():
+            order = Order.query.filter_by(email='salam@example.com').first()
+            self.assertIsNotNone(order)
+            self.assertEqual(len(order.items), 1)
+            self.assertEqual(order.items[0].price, 0.0)
+            self.assertEqual(order.items[0].quantity, 1)
+
+    def test_checkout_handles_non_list_cart_data(self):
+        response = self.client.post('/checkout', data={
+            'first_name': 'Salam',
+            'last_name': 'Mohamed',
+            'email': 'salam@example.com',
+            'address': '123 Tech Street',
+            'cart_data': '{"title": "Not an array"}',
+        }, follow_redirects=True)
+        self.assertEqual(response.status_code, 200)
+        with app.app_context():
+            self.assertEqual(Order.query.count(), 0)
+
+    def test_all_pages_render(self):
+        for path in ['/', '/shop', '/about', '/contact', '/account', '/checkout']:
+            response = self.client.get(path)
+            self.assertEqual(response.status_code, 200, f'GET {path} failed')
+
+    def test_static_assets_served(self):
+        css = self.client.get('/static/style.css')
+        js = self.client.get('/static/index.js')
+        self.assertEqual(css.status_code, 200)
+        self.assertEqual(js.status_code, 200)
+
+    def test_url_for_endpoints_match_routes(self):
+        with app.test_request_context():
+            for endpoint in ['home', 'account', 'shop', 'checkout',
+                             'contact', 'about', 'my_orders', 'logout']:
+                url = app_module.url_for(endpoint)
+                self.assertTrue(url.startswith('/'), f'{endpoint} -> {url}')
+
     def test_my_orders_requires_login(self):
         response = self.client.get('/my_orders')
         self.assertEqual(response.status_code, 302)

@@ -14,8 +14,12 @@
             <li><a href="{{ url_for('account') }}">Account</a></li>
             <li><a href="{{ url_for('home') }}">Home</a></li>
             <li><a href="{{ url_for('shop') }}">Shop</a></li>
+            <li><a href="{{ url_for('checkout') }}">Checkout</a></li>
+            <li><a href="{{ url_for('contact') }}">Contact</a></li>
+            <li><a href="{{ url_for('about') }}">About</a></li>
             <li><a href="{{ url_for('my_orders') }}">My Orders</a></li>
             <li><a href="{{ url_for('logout') }}">Logout</a></li>
+            <li><a href="{{ url_for('checkout') }}" class="cart-btn"><i class="fa-solid fa-cart-shopping"></i> Cart (<span id="cart-count">0</span>)</a></li>
         </ul>
     </header>
 
@@ -66,5 +70,6 @@
             </div>
         </div>
     </main>
+    <script src="{{ url_for('static', filename='index.js') }}"></script>
 </body>
 </html>
