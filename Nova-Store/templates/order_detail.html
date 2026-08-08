@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nova-Store | Order Details</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <header class="navbar">
+        <a href="{{ url_for('home') }}" class="logo"><i class="fa-solid fa-store"></i> Nova<span>-Store</span></a>
+        <ul class="nav-links">
+            <li><a href="{{ url_for('account') }}">Account</a></li>
+            <li><a href="{{ url_for('home') }}">Home</a></li>
+            <li><a href="{{ url_for('shop') }}">Shop</a></li>
+            <li><a href="{{ url_for('my_orders') }}">My Orders</a></li>
+            <li><a href="{{ url_for('logout') }}">Logout</a></li>
+        </ul>
+    </header>
+
+    <main class="auth-container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <div class="flash-messages" style="width:100%;max-width:980px;">
+            {% for category, message in messages %}
+            <div class="alert {{ category }}">{{ message }}</div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        {% endwith %}
+
+        <div class="account-dashboard" style="grid-template-columns:1fr;">
+            <div class="account-summary">
+                <div class="auth-header">
+                    <h2>Order #{{ order.id }}</h2>
+                    <p>Status: <strong>{{ order.status }}</strong></p>
+                </div>
+
+                <div class="account-info-card">
+                    <p><strong>Customer:</strong> {{ current_customer.full_name }}</p>
+                    <p><strong>Email:</strong> {{ order.email }}</p>
+                    <p><strong>Address:</strong> {{ order.address }}, {{ order.city }}</p>
+                    <p><strong>Phone:</strong> {{ order.phone }}</p>
+                    <p><strong>Payment:</strong> {{ order.payment_method }}</p>
+                    <p><strong>Total:</strong> ${{ '%.2f'|format(order.total_amount) }}</p>
+                </div>
+
+                <div class="order-card">
+                    <h3>Items</h3>
+                    <ul>
+                        {% for item in items %}
+                        <li>{{ item.title }} × {{ item.quantity }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+
+                <div class="dashboard-actions">
+                    <form action="{{ url_for('update_order_status', order_id=order.id, status='Shipped') }}" method="post" style="display:inline;">
+                        <button type="submit" class="btn-submit small-btn">Mark as Shipped</button>
+                    </form>
+                    <form action="{{ url_for('update_order_status', order_id=order.id, status='Delivered') }}" method="post" style="display:inline;">
+                        <button type="submit" class="btn-secondary">Mark as Delivered</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </main>
+</body>
+</html>

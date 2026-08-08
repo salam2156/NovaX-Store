@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nova-Store | Checkout</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+    <!-- Navbar -->
+    <header class="navbar">
+        <a href="{{ url_for('home') }}" class="logo"><i class="fa-solid fa-store"></i> Nova<span>-Store</span></a>
+        <ul class="nav-links">
+            <li><a href="{{ url_for('account') }}">Account</a></li>
+            <li><a href="{{ url_for('home') }}">Home</a></li>
+            <li><a href="{{ url_for('shop') }}">Shop</a></li>
+            <li><a href="{{ url_for('checkout') }}" class="active">Checkout</a></li>
+            <li><a href="{{ url_for('contact') }}">Contact</a></li>
+            <li><a href="{{ url_for('about') }}">About</a></li>
+            {% if current_customer %}
+            <li><a href="{{ url_for('my_orders') }}">My Orders</a></li>
+            <li><a href="{{ url_for('logout') }}">Logout</a></li>
+            {% endif %}
+            <li><a href="{{ url_for('checkout') }}" class="cart-btn"><i class="fa-solid fa-cart-shopping"></i> Cart (<span id="cart-count">0</span>)</a></li>
+        </ul>
+    </header>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div class="flash-messages" style="width:100%;max-width:1200px;margin:0 auto;padding:20px 20px 0;">
+        {% for category, message in messages %}
+        <div class="alert {{ category }}">{{ message }}</div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% endwith %}
+
+    <!-- Checkout Container -->
+    <div class="checkout-container">
+
+        <!-- Billing Details Form -->
+        <div class="section-box">
+            <h2>Billing & Shipping Details</h2>
+            <form id="checkoutForm" action="{{ url_for('checkout') }}" method="post" onsubmit="processOrder(event)">
+                <input type="hidden" name="total_amount" id="total_amount" value="0.00">
+                <input type="hidden" name="cart_data" id="cart_data" value="[]">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>First Name</label>
+                        <input type="text" name="first_name" required placeholder="Salam">
+                    </div>
+                    <div class="form-group">
+                        <label>Last Name</label>
+                        <input type="text" name="last_name" required placeholder="Mohamed">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Email Address</label>
+                    <input type="email" name="email" required placeholder="salam@example.com">
+                </div>
+
+                <div class="form-group">
+                    <label>Street Address</label>
+                    <input type="text" name="address" required placeholder="123 Tech Street">
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>City</label>
+                        <input type="text" name="city" required placeholder="City name">
+                    </div>
+                    <div class="form-group">
+                        <label>Phone Number</label>
+                        <input type="text" name="phone" required placeholder="+123456789">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Payment Method</label>
+                    <select name="payment_method" style="margin-bottom: 10px;">
+                        <option value="Credit / Debit Card">Credit / Debit Card</option>
+                        <option value="PayPal">PayPal</option>
+                        <option value="Cash on Delivery">Cash on Delivery</option>
+                    </select>
+                    <button type="submit" class="btn-checkout">Confirm & Place Order</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Order Summary Box -->
+        <div class="section-box">
+            <h2>Your Order Summary</h2>
+            <div class="order-items" id="checkoutItemsList">
+                <!-- Items will be loaded dynamically via JavaScript -->
+            </div>
+
+            <div class="summary-totals">
+                <div class="summary-row">
+                    <span>Subtotal:</span>
+                    <span id="checkout-subtotal">$0.00</span>
+                </div>
+                <div class="summary-row">
+                    <span>Shipping:</span>
+                    <span>$15.00</span>
+                </div>
+                <div class="summary-row total">
+                    <span>Total:</span>
+                    <span id="checkout-total">$0.00</span>
+                </div>
+            </div>
+
+            <button type="button" class="btn-checkout" onclick="submitOrder()">Place Order Now</button>
+        </div>
+
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="footer-col">
+                <h3><span>Nova</span>-Store</h3>
+                <p>Your ultimate destination for premium tech.</p>
+            </div>
+            <div class="footer-col">
+                <h4>Shop</h4>
+                <ul>
+                    <li><a href="{{ url_for('shop') }}">All Products</a></li>
+                    <li><a href="{{ url_for('shop') }}">Laptops</a></li>
+                    <li><a href="{{ url_for('shop') }}">Phones</a></li>
+                </ul>
+            </div>
+            <div class="footer-col">
+                <h4>Support</h4>
+                <ul>
+                    <li><a href="{{ url_for('contact') }}">Contact Us</a></li>
+                    <li><a href="#">Shipping</a></li>
+                    <li><a href="#">Returns</a></li>
+                </ul>
+            </div>
+            <div class="footer-col">
+                <h4>Account</h4>
+                <ul>
+                    <li><a href="{{ url_for('account') }}">Login</a></li>
+                    <li><a href="{{ url_for('account') }}">Register</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2026 <span>Nova-Store</span>. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script src="{{ url_for('static', filename='index.js') }}"></script>
+</body>
+</html>

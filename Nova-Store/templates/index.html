@@ -6,7 +6,7 @@
     <title>Nova-Store | Account</title>
     <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
    
 </head>
 <body>
@@ -21,6 +21,17 @@
             <li><a href="checkout.html">Checkout</a></li>
             <li><a href="contact.html">Contact</a></li>
             <li><a href="about.html">About</a></li>
+            <!-- Navbar -->
+<header class="navbar">
+    <a href="{{ url_for('index') }}" class="logo"><i class="fa-solid fa-store"></i> Nova<span>-Store</span></a>
+    <ul class="nav-links">
+        <li><a href="{{ url_for('home') }}" class="active">Account</a></li>
+        <li><a href="{{ url_for('shop') }}">Home</a></li>
+        <li><a href="{{ url_for('checkout') }}">checkout</a></li>
+
+        <!-- وبقية الروابط بنفس الطريقة -->
+    </ul>
+</header>
         </ul>
     </header>
 

@@ -1,33 +1,38 @@
- <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TechStore | About Us</title>
+    <title>Nova-Store | About Us</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
 
     <!-- Navbar -->
- <header class="navbar">
-        <a href="index.html" class="logo"><i class="fa-solid fa-store"></i> Nova<span>-Store</span></a>
+    <header class="navbar">
+        <a href="{{ url_for('home') }}" class="logo"><i class="fa-solid fa-store"></i> Nova<span>-Store</span></a>
         <ul class="nav-links">
-            <li><a href="account.html">Account</a></li>
-            <li><a href="index.html">Home</a></li>
-            <li><a href="shop.html"  >Shop</a></li>
-            <li><a href="checkout.html">Checkout</a></li>
-            <li><a href="contact.html">Contact</a></li>
-            <li><a href="about.html" class="active">About</a></li>
-            <li><a href="checkout.html" class="cart-btn"><i class="fa-solid fa-cart-shopping"></i> Cart (<span id="cart-count">0</span>)</a></li>
+            <li><a href="{{ url_for('account') }}">Account</a></li>
+            <li><a href="{{ url_for('home') }}">Home</a></li>
+            <li><a href="{{ url_for('shop') }}">Shop</a></li>
+            <li><a href="{{ url_for('checkout') }}">Checkout</a></li>
+            <li><a href="{{ url_for('contact') }}">Contact</a></li>
+            <li><a href="{{ url_for('about') }}" class="active">About</a></li>
+            {% if current_customer %}
+            <li><a href="{{ url_for('my_orders') }}">My Orders</a></li>
+            <li><a href="{{ url_for('logout') }}">Logout</a></li>
+            {% endif %}
+            <li><a href="{{ url_for('checkout') }}" class="cart-btn"><i class="fa-solid fa-cart-shopping"></i> Cart (<span id="cart-count">0</span>)</a></li>
         </ul>
     </header>
+
     <!-- About Container -->
     <div class="about-container">
-        
+
         <!-- Hero Section -->
         <div class="about-hero">
-            <h1>About <span>TechStore</span></h1>
+            <h1>About <span>Nova-Store</span></h1>
             <p>We are dedicated to bringing you the absolute best in modern technology, high-end electronics, and seamless online shopping experiences.</p>
         </div>
 
@@ -42,7 +47,7 @@
                 <i class="fa-solid fa-truck-fast"></i>
                 <h3>Fast Worldwide Shipping</h3>
                 <p>We ensure quick, safe, and reliable delivery right to your doorstep with real-time tracking.</p>
-</div>
+            </div>
             <div class="feature-card">
                 <i class="fa-solid fa-headset"></i>
                 <h3>24/7 Expert Support</h3>
@@ -54,7 +59,7 @@
         <div class="story-section">
             <div class="story-text">
                 <h2>Our Story & Mission</h2>
-                <p>Founded with a passion for innovation, TechStore started as a small project and grew into a trusted destination for tech enthusiasts, gamers, and professionals looking for top-tier performance.</p>
+                <p>Founded with a passion for innovation, Nova-Store started as a small project and grew into a trusted destination for tech enthusiasts, gamers, and professionals looking for top-tier performance.</p>
                 <p>Our mission is to bridge the gap between cutting-edge technology and everyday users by offering competitive prices, unmatched quality, and exceptional customer service.</p>
             </div>
             <div class="story-img">
@@ -68,21 +73,21 @@
     <footer class="footer">
         <div class="footer-content">
             <div class="footer-col">
-                <h3><span>Tech</span>Store</h3>
+                <h3><span>Nova</span>-Store</h3>
                 <p>Your ultimate destination for premium tech.</p>
             </div>
             <div class="footer-col">
                 <h4>Shop</h4>
                 <ul>
-                    <li><a href="shop.html">All Products</a></li>
-                    <li><a href="shop.html">Laptops</a></li>
-                    <li><a href="shop.html">Phones</a></li>
+                    <li><a href="{{ url_for('shop') }}">All Products</a></li>
+                    <li><a href="{{ url_for('shop') }}">Laptops</a></li>
+                    <li><a href="{{ url_for('shop') }}">Phones</a></li>
                 </ul>
             </div>
             <div class="footer-col">
                 <h4>Support</h4>
                 <ul>
-                    <li><a href="contact.html">Contact Us</a></li>
+                    <li><a href="{{ url_for('contact') }}">Contact Us</a></li>
                     <li><a href="#">Shipping</a></li>
                     <li><a href="#">Returns</a></li>
                 </ul>
@@ -90,26 +95,16 @@
             <div class="footer-col">
                 <h4>Account</h4>
                 <ul>
-                    <li><a href="account.html">Login</a></li>
-                    <li><a href="account.html">Register</a></li>
+                    <li><a href="{{ url_for('account') }}">Login</a></li>
+                    <li><a href="{{ url_for('account') }}">Register</a></li>
                 </ul>
             </div>
         </div>
         <div class="footer-bottom">
-            <p>&copy; 2026 <span>TechStore</span>. All rights reserved.</p>
+            <p>&copy; 2026 <span>Nova-Store</span>. All rights reserved.</p>
         </div>
     </footer>
 
-    <!-- JavaScript to update cart count dynamically -->
-    <script>
-        function updateCartCount() {
-            let cart = JSON.parse(localStorage.getItem('techstore_cart')) || [];
-            const cartCount = document.getElementById('cart-count');
-            if(cartCount) {
-                cartCount.textContent = cart.reduce((sum, item) => sum + item.quantity, 0);
-            }
-        }
-        document.addEventListener('DOMContentLoaded', updateCartCount);
-    </script>
+    <script src="{{ url_for('static', filename='index.js') }}"></script>
 </body>
 </html>

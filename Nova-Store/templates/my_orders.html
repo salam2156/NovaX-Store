@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nova-Store | My Orders</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <header class="navbar">
+        <a href="{{ url_for('home') }}" class="logo"><i class="fa-solid fa-store"></i> Nova<span>-Store</span></a>
+        <ul class="nav-links">
+            <li><a href="{{ url_for('account') }}">Account</a></li>
+            <li><a href="{{ url_for('home') }}">Home</a></li>
+            <li><a href="{{ url_for('shop') }}">Shop</a></li>
+            <li><a href="{{ url_for('checkout') }}">Checkout</a></li>
+            <li><a href="{{ url_for('contact') }}">Contact</a></li>
+            <li><a href="{{ url_for('about') }}">About</a></li>
+            <li><a href="{{ url_for('logout') }}">Logout</a></li>
+        </ul>
+    </header>
+
+    <main class="auth-container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <div class="flash-messages" style="width:100%;max-width:980px;">
+            {% for category, message in messages %}
+            <div class="alert {{ category }}">{{ message }}</div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        {% endwith %}
+
+        <div class="account-dashboard" style="grid-template-columns:1fr;">
+            <div class="account-summary">
+                <div class="auth-header">
+                    <h2>My Orders</h2>
+                    <p>Hello {{ current_customer.full_name }}, here are your purchases.</p>
+                </div>
+
+                {% if orders %}
+                    {% for entry in orders %}
+                    <div class="order-card">
+                        <div class="order-card-header">
+                            <h3>Order #{{ entry.order.id }}</h3>
+                            <span>${{ '%.2f'|format(entry.order.total_amount) }}</span>
+                        </div>
+                        <p><strong>Status:</strong> <span class="status-badge {{ entry.order.status|lower }}">{{ entry.order.status }}</span></p>
+                        <p><strong>Address:</strong> {{ entry.order.address }}</p>
+                        <p><strong>City:</strong> {{ entry.order.city }}</p>
+                        <p><strong>Phone:</strong> {{ entry.order.phone }}</p>
+                        <p><strong>Payment:</strong> {{ entry.order.payment_method }}</p>
+                        <ul>
+                            {% for item in entry.order_items %}
+                            <li>{{ item.title }} × {{ item.quantity }}</li>
+                            {% endfor %}
+                        </ul>
+                        <a href="{{ url_for('order_detail', order_id=entry.order.id) }}" class="text-link">View full details →</a>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="account-info-card">
+                        <p>No orders yet. Start shopping to see your history here.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </main>
+</body>
+</html>
