@@ -1,4 +1,4 @@
- <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -19,16 +19,31 @@
             <li><a href="{{ url_for('checkout') }}">Checkout</a></li>
             <li><a href="{{ url_for('contact') }}">Contact</a></li>
             <li><a href="{{ url_for('about') }}">About</a></li>
+            {% if current_customer %}
+            <li><a href="{{ url_for('my_orders') }}">My Orders</a></li>
+            <li><a href="{{ url_for('logout') }}">Logout</a></li>
+            {% endif %}
             <li><a href="{{ url_for('checkout') }}" class="cart-btn"><i class="fa-solid fa-cart-shopping"></i> Cart (<span id="cart-count">0</span>)</a></li>
         </ul>
     </header>
+
+    <!-- Flash messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div class="flash-messages" style="width:100%;max-width:1200px;margin:0 auto;padding:20px 20px 0;">
+        {% for category, message in messages %}
+        <div class="alert {{ category }}">{{ message }}</div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% endwith %}
 
     <!-- Shop Content -->
     <div class="shop-container">
         <div class="shop-header">
             <h1>Explore Our Products</h1>
             <p>Browse our extensive collection of high-end tech items curated just for you.</p>
-            
+
             <!-- Search Bar -->
             <div class="search-box">
                 <i class="fa-solid fa-magnifying-glass"></i>
@@ -37,219 +52,40 @@
             <div id="search-empty" class="hidden" style="text-align: center; color: #94a3b8; padding: 30px 0;">
                 <p>No products match your search.</p>
             </div>
+            <div id="search-result-count" class="hidden" style="text-align: center; color: #94a3b8; padding: 10px 0 0;"></div>
         </div>
 
-        <!-- Category 1: Laptops -->
+        <!-- Categories + products, rendered straight from the database so the
+             storefront always shows the same prices the checkout charges. -->
+        {% for category, products in grouped.items() %}
         <div class="category-section">
-            <h2 class="category-title">High-Performance Laptops</h2>
+            <h2 class="category-title">{{ category_labels.get(category, category) }}</h2>
             <div class="products-grid">
-                <div class="product-card" data-search="Pro UltraBook X1 laptop 16GB RAM 512GB SSD 4K display creators">
-                    <div class="product-img-box"><img src="https://images.unsplash.com/photo-1517336714731-489689fd1ca8" alt="Laptop"></div>
+                {% for product in products %}
+                <div class="product-card"
+                     data-name="{{ product.name }}"
+                     data-price="{{ product.price }}"
+                     data-search="{{ product.name }} {{ product.category }} {{ product.description }}">
+                    <div class="product-img-box">
+                        <img src="{{ product.image_url }}?auto=format&fit=crop&w=800&q=80"
+                             alt="{{ product.name }}"
+                             loading="lazy" decoding="async" width="800" height="500">
+                    </div>
                     <div class="product-info">
-                        <h3>Pro UltraBook X1</h3>
-                        <p>Powerful 16GB RAM, 512GB SSD, stunning 4K display for creators.</p>
+                        <h3>{{ product.name }}</h3>
+                        <p>{{ product.description }}</p>
                         <div class="product-footer">
-                            <span class="price">$1299</span>
-                            <button class="btn-add" onclick="addToCart('Pro UltraBook X1', 1299)">Add to Cart</button>
+                            <span class="price">${{ '{:,.0f}'.format(product.price) }}</span>
+                            <button class="btn-add" onclick="addToCart(this)">Add to Cart</button>
                         </div>
                     </div>
                 </div>
-                <div class="product-card" data-search="Gaming Beast G15 laptop graphics card high refresh rate extreme gaming">
-                    <div class="product-img-box"><img src="https://images.unsplash.com/photo-1496181133206-80ce9b88a853" alt="Laptop"></div>
-                    <div class="product-info">
-                        <h3>Gaming Beast G15</h3>
-                        <p>Dedicated graphics card, high refresh rate, built for extreme gaming.</p>
-                        <div class="product-footer">
-                            <span class="price">$1599</span>
-                            <button class="btn-add" onclick="addToCart('Gaming Beast G15', 1599)">Add to Cart</button>
-                        </div>
-                    </div>
-                </div>
-                <div class="product-card" data-search="SlimBook Air laptop ultra thin lightweight battery life professionals">
-                    <div class="product-img-box"><img src="https://images.unsplash.com/photo-1541807084-5c52b6b3adef" alt="Laptop"></div>
-                    <div class="product-info">
-                        <h3>SlimBook Air</h3>
-                        <p>Ultra-thin, lightweight design with all-day battery life for professionals.</p>
-                        <div class="product-footer">
-                            <span class="price">$999</span>
-                            <button class="btn-add" onclick="addToCart('SlimBook Air', 999)">Add to Cart</button>
-                        </div>
-                    </div>
-                </div>
+                {% endfor %}
             </div>
         </div>
-<!-- Category 2: Smartphones -->
-        <div class="category-section">
-            <h2 class="category-title">Smartphones & Devices</h2>
-            <div class="products-grid">
-                <div class="product-card" data-search="NovaPhone 14 Pro phone triple camera 120Hz OLED storage">
-                    <div class="product-img-box"><img src="https://images.unsplash.com/photo-1511707171634-5f897ff02aa9" alt="Phone"></div>
-                    <div class="product-info">
-                        <h3>NovaPhone 14 Pro</h3>
-                        <p>Triple camera setup, 120Hz OLED screen, massive storage capacity.</p>
-                        <div class="product-footer">
-                            <span class="price">$899</span>
-                            <button class="btn-add" onclick="addToCart('NovaPhone 14 Pro', 899)">Add to Cart</button>
-                        </div>
-                    </div>
-                </div>
-                <div class="product-card" data-search="Apex X Phone phone futuristic processor 5G support">
-                    <div class="product-img-box"><img src="https://images.unsplash.com/photo-1565849904461-04a58ad377e0" alt="Phone"></div>
-                    <div class="product-info">
-                        <h3>Apex X Phone</h3>
-                        <p>Sleek futuristic design with lightning-fast processor and 5G support.</p>
-                        <div class="product-footer">
-                            <span class="price">$749</span>
-                            <button class="btn-add" onclick="addToCart('Apex X Phone', 749)">Add to Cart</button>
-                        </div>
-                    </div>
-                </div>
-                <div class="product-card" data-search="Pulse Lite 5G phone affordable battery life dual cameras">
-                    <div class="product-img-box"><img src="https://images.unsplash.com/photo-1592899677977-9c10ca588bbd" alt="Phone"></div>
-                    <div class="product-info">
-                        <h3>Pulse Lite 5G</h3>
-                        <p>Affordable performance with great battery life and sharp dual cameras.</p>
-                        <div class="product-footer">
-                            <span class="price">$499</span>
-                            <button class="btn-add" onclick="addToCart('Pulse Lite 5G', 499)">Add to Cart</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Category 3: Audio & Headphones -->
-        <div class="category-section">
-            <h2 class="category-title">Audio & Headphones</h2>
-            <div class="products-grid">
-                <div class="product-card" data-search="SonicBass Wireless headphones noise cancellation deep bass 40 hours playback">
-                    <div class="product-img-box"><img src="https://images.unsplash.com/photo-1505740420928-5e560c06d30e" alt="Headphones"></div>
-                    <div class="product-info">
-                        <h3>SonicBass Wireless</h3>
-                        <p>Active noise cancellation, deep bass, and 40 hours of continuous playback.</p>
-                        <div class="product-footer">
-                            <span class="price">$249</span>
-                            <button class="btn-add" onclick="addToCart('SonicBass Wireless', 249)">Add to Cart</button>
-                        </div>
-                    </div>
-                </div>
-                <div class="product-card" data-search="AirPods Pro Max earbuds wireless spatial audio microphone">
-                    <div class="product-img-box"><img src="https://images.unsplash.com/photo-1590658268037-6bf12165a8df" alt="Earbuds"></div>
-                    <div class="product-info">
-                        <h3>AirPods Pro Max</h3>
-                        <p>True wireless earbuds with spatial audio and crystal-clear microphone.</p>
-                        <div class="product-footer">
-                            <span class="price">$199</span>
-                            <button class="btn-add" onclick="addToCart('AirPods Pro Max', 199)">Add to Cart</button>
-                        </div>
-</div>
-                </div>
-                <!-- Additional Products -->
-                 <h2 class="category-title">More Audio Options</h2>
-                <div class="product-card" data-search="CrystalClear Studio headphones professional studio high fidelity comfort">
-                    <div class="product-img-box"><img src="https://images.unsplash.com/photo-1580894894513-0f1e5b8c6f9d" alt="Headphones"></div>
-                    <div class="product-info">
-                        <h3>CrystalClear Studio</h3>
-                        <p>Professional studio headphones with high-fidelity sound and comfort.</p>
-                        <div class="product-footer">
-                            <span class="price">$349</span>
-                            <button class="btn-add" onclick="addToCart('CrystalClear Studio', 349)">Add to Cart</button>
-                        </div>
-                    </div>
-                </div>
-                <div class="product-card" data-search="Studio Pro Monitors headphones over-ear professional audio mixing">
-                    <div class="product-img-box"><img src="https://images.unsplash.com/photo-1546435770-a3e426bf472b" alt="Headphones"></div>
-                    <div class="product-info">
-                        <h3>Studio Pro Monitors</h3>
-                        <p>Over-ear studio headphones designed for professional audio mixing.</p>
-                        <div class="product-footer">
-                            <span class="price">$299</span>
-                            <button class="btn-add" onclick="addToCart('Studio Pro Monitors', 299)">Add to Cart</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Category 4: Wearables -->
-        <div class="category-section">
-            <h2 class="category-title">Smart Wearables</h2>
-            <div class="products-grid">
-                <div class="product-card" data-search="Titan SmartWatch 3 watch fitness heart rate GPS waterproof">
-                    <div class="product-img-box"><img src="https://images.unsplash.com/photo-1523275335684-37898b6baf30" alt="Watch"></div>
-                    <div class="product-info">
-                        <h3>Titan SmartWatch 3</h3>
-                        <p>Fitness tracking, heart rate monitor, GPS, and waterproof build.</p>
-                        <div class="product-footer">
-                            <span class="price">$299</span>
-                            <button class="btn-add" onclick="addToCart('Titan SmartWatch 3', 299)">Add to Cart</button>
-                        </div>
-                    </div>
-                </div>
-                <div class="product-card" data-search="Pulse Fit Band watch fitness band steps sleep calories">
-                    <div class="product-img-box"><img src="https://images.unsplash.com/photo-1508685096489-7aacd43bd3b1" alt="Watch"></div>
-                    <div class="product-info">
-                        <h3>Pulse Fit Band</h3>
-                        <p>Lightweight smart band to track your daily steps, sleep, and calories.</p>
-                        <div class="product-footer">
-                            <span class="price">$99</span>
-                            <button class="btn-add" onclick="addToCart('Pulse Fit Band', 99)">Add to Cart</button>
-                        </div>
-                    </div>
-                </div>
-                <div class="product-card" data-search="CyberSport Edition rugged outdoor smartwatch athletes explorers">
-                    <div class="product-img-box"><img src="https://images.unsplash.com/photo-1579586337278-3befd40fd17a" alt="Watch"></div>
-                    <div class="product-info">
-                        <h3>CyberSport Edition</h3>
-                        <p>Rugged outdoor smartwatch designed for extreme athletes and explorers.</p>
-                        <div class="product-footer">
-                            <span class="price">$349</span>
-                            <button class="btn-add" onclick="addToCart('CyberSport Edition', 349)">Add to Cart</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Category 5: Gaming Gear -->
-        <div class="category-section">
-            <h2 class="category-title">Gaming Gear</h2>
-            <div class="products-grid">
-                <div class="product-card" data-search="CyberPad Controller wireless gamepad RGB lighting gaming">
-                    <div class="product-img-box"><img src="https://images.unsplash.com/photo-1612287230202-1ff1d85d1bdf" alt="Controller"></div>
-                    <div class="product-info">
-                        <h3>CyberPad Controller</h3>
-                        <p>Ergonomic wireless gamepad with customizable triggers and RGB lighting.</p>
-                        <div class="product-footer">
-                            <span class="price">$79</span>
-                            <button class="btn-add" onclick="addToCart('CyberPad Controller', 79)">Add to Cart</button>
-                        </div>
-                    </div>
-                </div>
-                <div class="product-card" data-search="MechRGB Keyboard mechanical switches RGB backlight anti-ghosting gaming">
-                    <div class="product-img-box"><img src="https://images.unsplash.com/photo-1587829741301-dc798b83add3" alt="Keyboard"></div>
-                    <div class="product-info">
-                        <h3>MechRGB Keyboard</h3>
-                        <p>Mechanical switches, custom RGB backlight, and anti-ghosting keys.</p>
-                        <div class="product-footer">
-                            <span class="price">$129</span>
-                            <button class="btn-add" onclick="addToCart('MechRGB Keyboard', 129)">Add to Cart</button>
-                        </div>
-                    </div>
-                </div>
-                <div class="product-card" data-search="Viper Precision Mouse gaming mouse high DPI sensor gaming">
-                    <div class="product-img-box"><img src="https://images.unsplash.com/photo-1615663245857-ac93bb7c39e7" alt="Mouse"></div>
-                    <div class="product-info">
-                        <h3>Viper Precision Mouse</h3>
-                        <p>Ultra-lightweight gaming mouse with high DPI sensor and fast response.</p>
-                        <div class="product-footer">
-                            <span class="price">$89</span>
-                            <button class="btn-add" onclick="addToCart('Viper Precision Mouse', 89)">Add to Cart</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+        {% else %}
+        <p style="text-align:center; color:#94a3b8; padding:40px 0;">No products are available right now.</p>
+        {% endfor %}
     </div>
 
     <!-- Footer -->

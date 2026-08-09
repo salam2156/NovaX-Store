@@ -1,5 +1,7 @@
+import hashlib
 import json
 import os
+import time
 from datetime import datetime, timezone
 from functools import wraps
 
@@ -23,6 +25,15 @@ app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get(
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
+
+# ==========================
+# Business rules (single source of truth for the cart/order flow)
+# ==========================
+SHIPPING_FEE = 15.00                       # flat shipping cost, mirrored in index.js
+MAX_QUANTITY_PER_ITEM = 99                 # hard cap on units of one product per cart
+MAX_TOTAL_UNITS = 500                      # hard cap on units across the whole order
+ORDER_DEDUPE_WINDOW_SECONDS = 30           # reject identical resubmissions within this window
+PRICE_TOLERANCE = 0.01                     # allowed drift when verifying the client total
 
 
 class Customer(db.Model):
@@ -113,9 +124,13 @@ PRODUCT_SEED = [
     ("Viper Precision Mouse", "Ultra-lightweight gaming mouse with high DPI sensor and fast response.", 89, "https://images.unsplash.com/photo-1615663245857-ac93bb7c39e7", "Gaming Gear"),
 ]
 
-SHOP_CATEGORIES = [
-    "Laptops", "Smartphones", "Audio & Headphones", "Wearables", "Gaming Gear"
-]
+CATEGORY_LABELS = {
+    "Laptops": "High-Performance Laptops",
+    "Smartphones": "Smartphones & Devices",
+    "Audio & Headphones": "Audio & Headphones",
+    "Wearables": "Smart Wearables",
+    "Gaming Gear": "Gaming Gear",
+}
 
 
 def _table_columns(table_name):
@@ -206,6 +221,22 @@ def _is_valid_email(email):
     return '.' in domain and not domain.startswith('.') and not domain.endswith('.')
 
 
+def _normalise_quantity(raw):
+    """Return an int >= 1, or None if the value is missing/invalid.
+
+    Quantities are parsed client-side by the UI but MUST be re-validated here:
+    malicious clients can post any string (e.g. "0", "-5", "abc" or
+    "999999"), which would previously create absurd or free line items.
+    """
+    try:
+        quantity = int(raw)
+    except (TypeError, ValueError):
+        return None
+    if quantity < 1:
+        return None
+    return quantity
+
+
 def login_required(view):
     @wraps(view)
     def wrapped(*args, **kwargs):
@@ -236,8 +267,19 @@ def home():
 
 @app.route('/shop')
 def shop():
+    """Serve the catalogue straight from the database.
+
+    The shop template renders prices/cards from Product rows, so the storefront,
+    the cart and the checkout all derive from the same source of truth. Prices
+    are re-validated against the database again at checkout; a hardcoded,
+    desynchronised value can never get charged.
+    """
     products = Product.query.order_by(Product.category, Product.name).all()
-    return render_template('shop.html', products=products, categories=SHOP_CATEGORIES)
+    grouped = {}
+    for product in products:
+        grouped.setdefault(product.category or 'Other', []).append(product)
+    return render_template('shop.html', grouped=grouped,
+                           category_labels=CATEGORY_LABELS)
 
 
 @app.route('/about')
@@ -344,18 +386,29 @@ def checkout():
         except (ValueError, TypeError):
             cart = []
 
-        if not first_name or not last_name or not email or not address or not cart:
-            flash('Please complete your billing details and add items to your cart.', 'error')
+        if not first_name or not last_name or not email or not address:
+            flash('Please complete your billing details.', 'error')
             return redirect(url_for('checkout'))
 
         if not _is_valid_email(email):
             flash('Please enter a valid email address.', 'error')
             return redirect(url_for('checkout'))
 
-        products_by_title = {
-            p.name: p for p in Product.query.all()
-        }
-        merged = {}
+        if not cart:
+            flash('Your cart is empty. Add some products before placing an order.', 'error')
+            return redirect(url_for('checkout'))
+
+        # ----------------------------------------------------------------
+        # Rebuild the order from the DATABASE (single source of truth).
+        # Titles are only used to look products up; quantities are capped;
+        # prices always come from the Product row, never from the client.
+        # Unknown titles / zero-priced products are rejected outright, so a
+        # tampered or stale cart can never create "free" line items.
+        # ----------------------------------------------------------------
+        products_by_title = {p.name: p for p in Product.query.all()}
+        merged = {}      # keyed by product id
+        total_units = 0
+
         for item in cart:
             if not isinstance(item, dict):
                 continue
@@ -363,28 +416,95 @@ def checkout():
             if not title:
                 continue
             product = products_by_title.get(title)
-            try:
-                quantity = max(1, int(item.get('quantity') or 1))
-            except (TypeError, ValueError):
-                quantity = 1
-            price = product.price if product is not None else 0.0
-            if title in merged:
-                merged[title]['quantity'] += quantity
+            if product is None or product.price <= 0:
+                flash(
+                    'One of the items in your cart is no longer available. '
+                    'Please review your cart and try again.',
+                    'error',
+                )
+                return redirect(url_for('checkout'))
+
+            quantity = _normalise_quantity(item.get('quantity'))
+            if quantity is None:
+                flash('One of the items in your cart has an invalid quantity. '
+                      'Please review your cart and try again.', 'error')
+                return redirect(url_for('checkout'))
+            if quantity > MAX_QUANTITY_PER_ITEM:
+                flash(f'{title} exceeds the maximum orderable quantity '
+                      f'({MAX_QUANTITY_PER_ITEM} units per item).', 'error')
+                return redirect(url_for('checkout'))
+
+            if product.id in merged:
+                merged[product.id]['quantity'] += quantity
             else:
-                merged[title] = {
-                    'product_id': product.id if product is not None else None,
-                    'price': price,
+                merged[product.id] = {
+                    'product': product,
                     'quantity': quantity,
                 }
+            total_units += quantity
+            if total_units > MAX_TOTAL_UNITS:
+                flash(f'Your order exceeds the maximum allowed quantity '
+                      f'({MAX_TOTAL_UNITS} units).', 'error')
+                return redirect(url_for('checkout'))
 
         if not merged:
             flash('Your cart does not contain any valid items.', 'error')
             return redirect(url_for('checkout'))
 
-        total_amount = sum(
-            entry['price'] * entry['quantity'] for entry in merged.values()
-        )
+        # Verify that merged line quantities are still within the per-item cap
+        # (duplicate lines could otherwise combine past the limit).
+        for entry in merged.values():
+            if entry['quantity'] > MAX_QUANTITY_PER_ITEM:
+                flash(f'{entry["product"].name} exceeds the maximum orderable '
+                      f'quantity ({MAX_QUANTITY_PER_ITEM} units per item).', 'error')
+                return redirect(url_for('checkout'))
 
+        subtotal = round(sum(
+            entry['product'].price * entry['quantity']
+            for entry in merged.values()
+        ), 2)
+        total_amount = round(subtotal + SHIPPING_FEE, 2)
+
+        # Cross-check the hidden total built client-side. If it disagrees with
+        # the authoritative server total, someone tampered with the form or a
+        # catalogue price changed mid-checkout - refuse instead of charging a
+        # price nobody agreed on.
+        try:
+            client_total = float(request.form.get('total_amount') or '')
+        except (TypeError, ValueError):
+            client_total = None
+        if client_total is not None and abs(client_total - total_amount) > PRICE_TOLERANCE:
+            flash('Your cart total changed and could not be verified. '
+                  'Please review your cart and try again.', 'error')
+            return redirect(url_for('checkout'))
+
+        # ----------------------------------------------------------------
+        # Server-side double-submit guard.
+        # The JS on the checkout page also blocks a second click, but a
+        # network re-post or a scripted client can ignore that. We build a
+        # fingerprint of the order contents and refuse to create the same
+        # order twice within a short window on the same session.
+        # ----------------------------------------------------------------
+        dedupe_lines = sorted(
+            (entry['product'].name, entry['quantity']) for entry in merged.values()
+        )
+        dedupe_key = hashlib.sha256(
+            '|'.join([
+                first_name.lower(), last_name.lower(), email.lower(),
+                address.lower(), json.dumps(dedupe_lines, sort_keys=True),
+            ]).encode('utf-8')
+        ).hexdigest()
+
+        last_ts = session.get('last_order_ts')
+        if (last_ts is not None
+                and session.get('last_order_key') == dedupe_key
+                and time.time() - last_ts < ORDER_DEDUPE_WINDOW_SECONDS):
+            flash('Your order has already been placed. '
+                  'Please do not resubmit the form.', 'error')
+            return redirect(url_for('checkout'))
+
+        # Link the order to the logged-in customer, or to a customer matching
+        # the billing email so guests can still find it under "My Orders".
         customer_id = session.get('customer_id')
         if customer_id is None:
             matched_customer = Customer.query.filter(
@@ -405,18 +525,25 @@ def checkout():
             total_amount=total_amount,
             status='Pending',
         )
-        for title, entry in merged.items():
+        for entry in merged.values():
+            product = entry['product']
             order.items.append(OrderItem(
-                product_id=entry['product_id'],
-                title=title,
+                product_id=product.id,
+                title=product.name,
                 quantity=entry['quantity'],
-                price=entry['price'],
+                price=product.price,
             ))
 
         db.session.add(order)
         db.session.commit()
-        flash('Order placed successfully! Thank you for shopping with Nova-Store.', 'success')
-        return redirect(url_for('home', order_placed=1))
+
+        # Remember this exact order so a re-post cannot create a duplicate.
+        session['last_order_key'] = dedupe_key
+        session['last_order_ts'] = time.time()
+
+        flash(f'Order #{order.id} placed successfully! '
+              'Thank you for shopping with Nova-Store.', 'success')
+        return redirect(url_for('home', order_placed=1, order_id=order.id))
 
     return render_template('checkout.html')
 
