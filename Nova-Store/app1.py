@@ -385,8 +385,16 @@ def checkout():
             entry['price'] * entry['quantity'] for entry in merged.values()
         )
 
+        customer_id = session.get('customer_id')
+        if customer_id is None:
+            matched_customer = Customer.query.filter(
+                db.func.lower(Customer.email) == email.lower()
+            ).first()
+            if matched_customer is not None:
+                customer_id = matched_customer.id
+
         order = Order(
-            customer_id=session.get('customer_id'),
+            customer_id=customer_id,
             first_name=first_name,
             last_name=last_name,
             email=email,
@@ -416,8 +424,15 @@ def checkout():
 @app.route('/my_orders')
 @login_required
 def my_orders():
+    customer = db.session.get(Customer, session['customer_id'])
     orders = (Order.query
-              .filter_by(customer_id=session['customer_id'])
+              .filter(db.or_(
+                  Order.customer_id == customer.id,
+                  db.and_(
+                      Order.customer_id.is_(None),
+                      db.func.lower(Order.email) == customer.email.lower()
+                  )
+              ))
               .order_by(Order.id.desc())
               .all())
     entries = [{'order': order, 'order_items': order.items} for order in orders]
