@@ -416,7 +416,7 @@ def checkout():
         db.session.add(order)
         db.session.commit()
         flash('Order placed successfully! Thank you for shopping with Nova-Store.', 'success')
-        return redirect(url_for('home'))
+        return redirect(url_for('home', order_placed=1))
 
     return render_template('checkout.html')
 

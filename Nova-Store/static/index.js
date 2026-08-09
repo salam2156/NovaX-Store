@@ -57,6 +57,10 @@ document.addEventListener('click', function (event) {
 document.addEventListener('DOMContentLoaded', function () {
     updateCartCount();
     renderCheckout();
+    if (new URLSearchParams(window.location.search).get('order_placed')) {
+        clearCartStorage();
+        history.replaceState({}, '', window.location.pathname);
+    }
 });
 
 // ==========================
@@ -91,7 +95,6 @@ function addToCart(title, price) {
 }
 
 function filterProducts() {
-    
     const query = (document.getElementById('searchInput').value || '').toLowerCase().trim();
     let anyVisible = false;
 
@@ -109,7 +112,6 @@ function filterProducts() {
 
     const emptyState = document.getElementById('search-empty');
     if (emptyState) {
-       
         emptyState.classList.toggle('hidden', !query || anyVisible);
     }
 }
@@ -132,7 +134,6 @@ function renderCheckout() {
         } else {
             container.innerHTML = '';
             cart.forEach((item, index) => {
-
                 const price = parseFloat(item.price) || 0;
                 const quantity = parseInt(item.quantity) || 1;
                 subtotal += price * quantity;
@@ -187,16 +188,6 @@ function changeQty(index, delta) {
     }
 }
 
-function processOrder(event) {
-    const cart = getCart();
-    if (cart.length === 0) {
-        event.preventDefault();
-        alert('Your cart is empty. Please add products before placing your order.');
-        return;
-    }
-    renderCheckout();
-}
-
 function removeItem(index) {
     const cart = getCart();
     if (cart[index]) {
@@ -206,3 +197,18 @@ function removeItem(index) {
     }
 }
 
+let orderSubmitted = false;
+
+function processOrder(event) {
+    if (orderSubmitted) {
+        event.preventDefault();
+        return;
+    }
+    const cart = getCart();
+    if (cart.length === 0) {
+        event.preventDefault();
+        alert('Your cart is empty. Please add products before placing your order.');
+        return;
+    }
+    orderSubmitted = true;
+}
