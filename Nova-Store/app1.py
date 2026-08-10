@@ -2,7 +2,7 @@ import hashlib
 import json
 import os
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from functools import wraps
 
 from flask import Flask, flash, redirect, render_template, request, session, url_for
@@ -23,6 +23,9 @@ app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get(
     'DATABASE_URL', 'sqlite:///store.db'
 )
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+# Keep users signed in across browser restarts for 30 days
+# (requires session.permanent = True after login/register).
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=30)
 
 db = SQLAlchemy(app)
 
@@ -211,6 +214,19 @@ def ensure_db_initialized():
 # Helpers / auth
 # ==========================
 
+@app.after_request
+def prevent_stale_pages(response):
+    """Never let the browser cache dynamic pages.
+
+    Without this, the browser Back button can restore a stale snapshot of
+    /account (the login form) from its back-forward cache even when the user
+    is actually signed in - which looks like "my login data was not saved".
+    """
+    if response.mimetype == 'text/html':
+        response.headers['Cache-Control'] = 'no-store'
+    return response
+
+
 def _is_valid_email(email):
     email = (email or '').strip()
     if email.count('@') != 1:
@@ -324,9 +340,10 @@ def account():
 
             customer = Customer.query.filter_by(email=email).first()
             if customer and check_password_hash(customer.password, password):
+                session.permanent = True
                 session['customer_id'] = customer.id
                 flash(f'Welcome back, {customer.full_name}!', 'success')
-                return redirect(url_for('home'))
+                return redirect(url_for('account'))
 
             flash('Invalid email or password.', 'error')
             return redirect(url_for('account'))
@@ -353,9 +370,10 @@ def account():
             flash('An account with that email already exists. Please log in instead.', 'error')
             return redirect(url_for('account'))
 
+        session.permanent = True
         session['customer_id'] = customer.id
         flash(f'Account created successfully. Welcome, {full_name}!', 'success')
-        return redirect(url_for('home'))
+        return redirect(url_for('account'))
 
     return render_template('account.html')
 
